@@ -1,0 +1,16 @@
+{
+  "name": "imapsubjectmonitor",
+  "version": "1.0.0",
+  "description": "connect to a user's mailbox. Montior for a given gbl in subject line. Execute alert when gbl is found.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies":{
+    "imap":"",
+    "prompt":"",
+    "opn":""
+  },
+  "author": "",
+  "license": "ISC"
+}
