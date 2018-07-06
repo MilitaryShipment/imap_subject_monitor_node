@@ -2,12 +2,12 @@ const Imap = require('imap'), inspect = require('util').inspect, prompt = requir
 
 var GBL = '';
 var alertPath = '';
-var imap = new Imap();
+var imap;
+var pastSubjects = [];
 
 function openInbox(cb){
     imap.openBox('INBOX',true,cb);
 }
-
 function parseMsg(msg,seqno){
     var prefix = '(#' + seqno + ') ';
     msg.on('body',buildStream);
@@ -27,25 +27,23 @@ function buildStream(stream,info){
 }
 function interpretSubject(subject){
     var pattern = new RegExp(GBL);
-    console.log(pattern);
     var result = subject.match(pattern);
-    if(result === null){
-        console.log('No result');
-    }else{
-        opn(alertPath).then(()=>{
-            //closed
-        });
+    if(result !== null){
+        var index = pastSubjects.indexOf(result.input)
+        if(index === -1){
+            var currentDate = new Date();
+            console.log("Match Found at: " + currentDate.toLocaleTimeString());
+            pastSubjects.push(result.input);
+            opn(alertPath).then(()=>{/*closed*/});
+        }
     }
 }
 
-prompt.start();
-prompt.get(['username','password','gbl','alertPath'],(err,result)=> {
-    if(err) throw err;
-    GBL = result.gbl;
-    alertPath = result.alertPath;
+function initImap(username,password){
     imap = new Imap(
-        {user:'aam\\' + result.username,
-            password:result.password,
+        {
+            user:'' + username,
+            password:password,
             host:'mail.allamericanmoving.com',
             port:993,
             autotls:'always',
@@ -55,20 +53,31 @@ prompt.get(['username','password','gbl','alertPath'],(err,result)=> {
     imap.once('ready',function(){
         openInbox(function(err,box){
             if(err) throw err;
-            console.log('Ready...');
-            var f = imap.seq.fetch(box.messages.total + ':*', {bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],struct:true});
+            var currentDate = new Date();
+            console.log('Checking ' + GBL + " at: " + currentDate.toLocaleTimeString());
+            var f = imap.seq.fetch(box.messages.total - 10 + ':*', {bodies: ['HEADER.FIELDS (SUBJECT)'],struct:true});
             f.on('message',parseMsg);
             f.once('error',(err)=>{
                 console.log('Fetch Error: ' + err);
             });
             f.once('end',()=>{
-                console.log('Done Fetching all messages!');
+                // console.log('Done Fetching all messages!');
             imap.end();
             });
         });
     });
     imap.once('error',function(err){console.log(err);});
-    imap.once('end',function(){console.log('Connection ended.');});
+    imap.once('end',function(){/*console.log('Connection ended.');*/});
     imap.connect();
-    setInterval(()=>{imap.connect();},5000);
+}
+
+prompt.start();
+prompt.get(['username','password','gbl','alertPath'],(err,result)=> {
+    if(err) throw err;
+    var currentDate = new Date();
+    GBL = result.gbl;
+    alertPath = result.alertPath;
+    console.log("Running at: " + currentDate.toLocaleTimeString());
+    initImap(result.username,result.password);
+    setInterval(()=>{initImap(result.username,result.password);},2000);
 });
